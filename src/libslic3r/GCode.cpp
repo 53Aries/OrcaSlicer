@@ -2931,13 +2931,6 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
 
     print.throw_if_canceled();
 
-    // BBS: For multi-extruder prints with wipe tower, mark position unclear before preamble()
-    // to prevent standalone Z move in travel_to_z(). This ensures Z moves
-    // happen together with XY in subsequent travels, avoiding nozzle drag.
-    if (m_writer.multiple_extruders && has_wipe_tower) {
-        m_writer.set_current_position_clear(false);
-    }
-
     // Set other general things.
     file.write(this->preamble());
 
@@ -3113,8 +3106,13 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
                 m_wipe_tower->set_wipe_tower_depth(print.get_wipe_tower_depth());
                 m_wipe_tower->set_wipe_tower_bbx(print.get_wipe_tower_bbx());
                 m_wipe_tower->set_rib_offset(print.get_rib_offset());
-                //BBS
-                file.write(m_writer.travel_to_z(initial_layer_print_height + m_config.z_offset.value, "Move to the first layer height"));
+                //BBS: Update Z position without emitting standalone Z move
+                // Mark position unclear and just update internal state. Z movement will happen
+                // with first travel_to() which moves XY first, preventing nozzle drag.
+                m_writer.set_current_position_clear(false);
+                Vec3d pos = m_writer.get_position();
+                pos(2) = initial_layer_print_height + m_config.z_offset.value;
+                m_writer.set_position(pos);
 
                 if (!is_bbl_printers && print.config().single_extruder_multi_material_priming) {
                     file.write(m_wipe_tower->prime(*this));
