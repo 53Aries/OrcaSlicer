@@ -65,7 +65,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: self-hosted
           - os: macos-14
             arch: arm64
     # Don't run scheduled builds on forks:
