@@ -1185,7 +1185,12 @@ static std::vector<Vec2d> get_path_of_change_filament(const Print& print)
         gcodegen.set_last_pos(wipe_tower_point_to_object_point(gcodegen, end_pos + plate_origin_2d));
         if (!is_approx(z, current_z)) {
             gcode += gcodegen.writer().retract();
-            gcode += gcodegen.writer().travel_to_z(current_z, "Travel back up to the topmost object layer.");
+            // BBS: For first layer multi-color prints, don't emit standalone Z move here
+            // Instead, update the position and let the next travel_to() handle Z movement
+            // in the correct order (XY first, then Z) to avoid nozzle traveling low across the bed
+            Vec3d pos = gcodegen.writer().get_position();
+            pos(2) = current_z;
+            gcodegen.writer().set_position(pos);
             gcode += gcodegen.writer().unretract();
         }
 
@@ -4267,6 +4272,12 @@ LayerResult GCode::process_layer(
     gcode += this->change_layer(print_z);  // this will increase m_layer_index
     m_layer = &layer;
     m_object_layer_over_raft = false;
+
+    // BBS: For multi-color prints on first layer, mark position as unclear after layer change
+    // to ensure subsequent travels move XY first before Z, avoiding nozzle dragging across bed
+    if (first_layer && is_multi_extruder && has_wipe_tower) {
+        m_writer.set_current_position_clear(false);
+    }
 
     if (!m_config.time_lapse_gcode.value.empty() && !is_BBL_Printer()) {
         DynamicConfig config;
