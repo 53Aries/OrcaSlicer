@@ -2931,10 +2931,10 @@ void GCode::_do_export(Print& print, GCodeOutputStream &file, ThumbnailsGenerato
 
     print.throw_if_canceled();
 
-    // BBS: For multi-extruder prints, mark position unclear before preamble()
+    // BBS: For multi-extruder prints with wipe tower, mark position unclear before preamble()
     // to prevent standalone Z move in travel_to_z(). This ensures Z moves
     // happen together with XY in subsequent travels, avoiding nozzle drag.
-    if (m_writer.multiple_extruders) {
+    if (m_writer.multiple_extruders && has_wipe_tower) {
         m_writer.set_current_position_clear(false);
     }
 
